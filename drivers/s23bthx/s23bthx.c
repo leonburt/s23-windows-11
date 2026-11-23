@@ -1509,19 +1509,20 @@ static VOID S23BthxCancelIrp(PDEVICE_OBJECT devObj, PIRP irp) {
     (void)devObj;
     IoReleaseCancelSpinLock(irp->CancelIrql);
     PS23BTHX_EXT ext = g_ActiveExt;
-    BOOLEAN removed = FALSE;
     if (ext) {
         KIRQL oldIrql = KeAcquireSpinLockRaiseToDpc(&ext->IoLock);
-        removed = QueueRemove(&ext->TxQueue, irp) ||
-                  QueueRemove(&ext->EvtQueue, irp) ||
-                  QueueRemove(&ext->AclQueue, irp);
+        (void)(QueueRemove(&ext->TxQueue, irp) ||
+               QueueRemove(&ext->EvtQueue, irp) ||
+               QueueRemove(&ext->AclQueue, irp));
         KeReleaseSpinLock(&ext->IoLock, oldIrql);
     }
-    if (removed) {
-        irp->IoStatus.Status = STATUS_CANCELLED;
-        irp->IoStatus.Information = 0;
-        IofCompleteRequest(irp, IO_NO_INCREMENT);
-    }
+    /* The I/O manager calls this routine only after atomically taking the cancel routine out of the IRP,
+     * so this routine owns the IRP and must complete it even if it is no longer queued: the TX thread,
+     * DeliverRxPacket and DrainAndCancelQueue pop the IRP first and, when IoSetCancelRoutine(irp, NULL)
+     * returns NULL, leave it to us.  Completing only "removed" IRPs lost those IRPs forever. */
+    irp->IoStatus.Status = STATUS_CANCELLED;
+    irp->IoStatus.Information = 0;
+    IofCompleteRequest(irp, IO_NO_INCREMENT);
 }
 
 static VOID CompleteReadIrpWithPacket(PIRP irp, UCHAR pktType, const uint8_t *pkt, uint32_t pktLen) {
@@ -1838,13 +1839,16 @@ static NTSTATUS S23BthxDispatchIoctl(PDEVICE_OBJECT fdo, PIRP irp) {
             return STATUS_NO_SUCH_DEVICE;
         }
         KIRQL oldIrql = KeAcquireSpinLockRaiseToDpc(&ext->IoLock);
-        if (ext->TxQueue.Count >= MAX_PENDING_IRP) {
+        /* Re-check Stopping under IoLock (like READ_HCI): S23BthxStopHw sets it before draining the
+         * queues under this lock, so an IRP queued after the drain would never be completed. */
+        if (ext->TxQueue.Count >= MAX_PENDING_IRP || ext->Stopping) {
+            NTSTATUS rej = ext->Stopping ? STATUS_NO_SUCH_DEVICE : STATUS_INSUFFICIENT_RESOURCES;
             KeReleaseSpinLock(&ext->IoLock, oldIrql);
-            irp->IoStatus.Status = STATUS_INSUFFICIENT_RESOURCES;
+            irp->IoStatus.Status = rej;
             irp->IoStatus.Information = 0;
             IofCompleteRequest(irp, IO_NO_INCREMENT);
             IoReleaseRemoveLockEx(&ext->RemoveLock, irp, sizeof(IO_REMOVE_LOCK));
-            return STATUS_INSUFFICIENT_RESOURCES;
+            return rej;
         }
         IoMarkIrpPending(irp);
         IoSetCancelRoutine(irp, S23BthxCancelIrp);
@@ -1854,7 +1858,7 @@ static NTSTATUS S23BthxDispatchIoctl(PDEVICE_OBJECT fdo, PIRP irp) {
             irp->IoStatus.Information = 0;
             IofCompleteRequest(irp, IO_NO_INCREMENT);
             IoReleaseRemoveLockEx(&ext->RemoveLock, irp, sizeof(IO_REMOVE_LOCK));
-            return STATUS_CANCELLED;
+            return STATUS_PENDING;   /* IoMarkIrpPending was called: must return STATUS_PENDING */
         }
         QueuePush(&ext->TxQueue, irp);
         KeReleaseSpinLock(&ext->IoLock, oldIrql);
@@ -1906,7 +1910,7 @@ static NTSTATUS S23BthxDispatchIoctl(PDEVICE_OBJECT fdo, PIRP irp) {
                 irp->IoStatus.Information = 0;
                 IofCompleteRequest(irp, IO_NO_INCREMENT);
                 IoReleaseRemoveLockEx(&ext->RemoveLock, irp, sizeof(IO_REMOVE_LOCK));
-                return STATUS_CANCELLED;
+                return STATUS_PENDING;   /* IoMarkIrpPending was called: must return STATUS_PENDING */
             }
             QueuePush(q, irp);
             KeReleaseSpinLock(&ext->IoLock, oldIrql);
