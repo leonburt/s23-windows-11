@@ -1,6 +1,10 @@
+param(
+    # Driver directory (defaults to the folder of this script, i.e. drivers\s23aclfix of the current checkout)
+    [string]$DriverDir = $PSScriptRoot
+)
 $ErrorActionPreference = 'Stop'
 
-$drvDir = 'C:\Users\Mahan\Documents\windows-on-android\s23_dm1q\drivers\s23aclfix'
+$drvDir = $DriverDir
 $pkgDir = Join-Path $drvDir 'pkg'
 New-Item -ItemType Directory -Force -Path $pkgDir | Out-Null
 

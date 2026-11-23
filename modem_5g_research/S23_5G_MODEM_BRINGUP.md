@@ -114,8 +114,8 @@ While X70 5G is blocked by missing Qualcomm drivers, our Kailua + `s23_live.dts`
 
 ---
 
-## 5. Ready-to-Integrate ACPI Stubs (`modem_research\s23_modem_subsystems.asl`)
+## 5. Ready-to-Integrate ACPI Stubs (`modem_5g_research/s23_modem_subsystems.asl`)
 
-A companion `iasl -tc`-verified ACPI SSDT (`modem_research\s23_modem_subsystems.asl`, compiled to `s23_modem_subsystems.aml` & `s23_modem_subsystems.hex` with **0 Errors, 0 Warnings**) defines S23-exact ACPI stubs for:
+A companion `iasl -tc`-verified ACPI SSDT (`modem_5g_research/s23_modem_subsystems.asl`, compiled to `s23_modem_subsystems.aml` & `s23_modem_subsystems.hex` with **0 Errors, 0 Warnings**) defines S23-exact ACPI stubs for:
 - `ABD` (`QCOM0427`), `SCM0` (`QCOM05DD`, `_CID QCOM04DD`), `RPEN` (`QCOM5EE1`, `_CID QCOM06E1`), `PILC` (`QCOM5EE0`, `_CID QCOM06E0`), `TFTP` (`QCOM5EDC`, `_CID QCOM06DC`), `SOCP` (`QCOM5EDD`, `_CID QCOM06DD`), `IPCC` (`QCOM06C2` @ `0x00408000`), `GLNK` (`QCOM0C84`), `IPC0` (`QCOM0C0D`), `AMSS` (`QCOM0C1C`, WDOG `GSI 296`), and `IPA` (`QCOM0C6A` @ `0x03E00000` + `0x03E04000`, `GSI 686` & `464`).
 - **Safety:** Every stub defaults to `Method (_STA) { Return (Zero) }` so including the table causes **zero behavioral change** until individual devices are explicitly flipped to `0x0F` one-by-one as matching drivers become available.

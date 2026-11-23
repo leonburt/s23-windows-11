@@ -1,6 +1,10 @@
+param(
+    # Driver directory (defaults to the folder of this script, i.e. drivers\s23disp_diag of the current checkout)
+    [string]$DriverDir = $PSScriptRoot
+)
 $ErrorActionPreference = 'Stop'
 
-$drvDir = 'C:\Users\Mahan\Documents\windows-on-android\s23_dm1q\drivers\s23disp_diag'
+$drvDir = $DriverDir
 $pkgDir = Join-Path $drvDir 'pkg'
 $stageDir = Join-Path $drvDir 'cat_stage'
 New-Item -ItemType Directory -Force -Path $pkgDir | Out-Null

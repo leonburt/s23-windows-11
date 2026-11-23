@@ -2,7 +2,8 @@ import os
 import struct
 import subprocess
 
-DRV_DIR = "/mnt/c/Users/Mahan/Documents/windows-on-android/s23_dm1q/drivers/s23pilprobe"
+# Directory of this script (works from any checkout, e.g. /mnt/c/<repo>/drivers/s23pilprobe); S23_DRV_DIR overrides it.
+DRV_DIR = os.environ.get("S23_DRV_DIR") or os.path.dirname(os.path.abspath(__file__))
 OUT_DIR = f"{DRV_DIR}/out"
 os.makedirs(OUT_DIR, exist_ok=True)
 

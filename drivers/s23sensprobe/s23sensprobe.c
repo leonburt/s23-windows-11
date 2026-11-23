@@ -438,10 +438,10 @@ static void LogHex(uint64_t v, int digits)
 
 static void LogDec(int64_t v)
 {
-    if (v < 0) { LogC('-'); v = -v; }
+    if (v < 0) { LogC('-'); /* magnitude taken as unsigned below: -INT64_MIN is undefined behaviour */ }
     char tmp[24];
     int n = 0;
-    uint64_t uv = (uint64_t)v;
+    uint64_t uv = (v < 0) ? (0ULL - (uint64_t)v) : (uint64_t)v;
     if (uv == 0U) tmp[n++] = '0';
     while (uv > 0U) { tmp[n++] = (char)('0' + (uv % 10U)); uv /= 10U; }
     while (n > 0) LogC(tmp[--n]);

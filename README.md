@@ -24,8 +24,9 @@ This repository contains the ARM64 kernel drivers, UEFI DXE patches, ACPI SSDTs,
 | **Bluetooth 5.3 + BLE** | [`drivers/s23bthx/`](drivers/s23bthx/) | ✅ Working | `BthMini` extensible-transport lower filter for the **QCA6490** on `UART14` (QUP2 SE6, `3.2 Mbaud`, IBS), Classic + BLE, A2DP-sized ACL buffers. |
 | **USB-C PC link** | [`s23link.py`](s23link.py) | ✅ Working | WinUSB remote shell and file transfer between PC and phone (`ping`, `ver`, `exec`, `put`, `get`, `reboot`). |
 | **Audio** (CS35L43 amps, CS40L26A haptics) | [`audio_sensors_research/`](audio_sensors_research/) | 🚧 In active development | Amps and haptics probed live, ACPI SSDT and architecture doc in progress. |
-| **Wi-Fi 6E** (QCA6490 PCIe) | [`wifi_research/`](wifi_research/), [`drivers/s23pcieprobe/`](drivers/s23pcieprobe/) | 🔬 Research | PCIe0 UEFI DXE, ACPI SSDT, package builder and kernel probe staged. |
-| **5G modem / PIL / CPU perf** | [`modem_5g_research/`](modem_5g_research/), [`drivers/s23pilprobe/`](drivers/s23pilprobe/), [`drivers/s23perf/`](drivers/s23perf/) | 🔬 Research | SMEM/IMEM/PIL telemetry, subsystem SSDT, EPSS CPUfreq and TSENS probes. |
+| **Wi-Fi 6E** (QCA6490 PCIe, `PCI\VEN_17CB&DEV_1103`) | [`wifi_research/`](wifi_research/), [`drivers/s23pcieprobe/`](drivers/s23pcieprobe/) | ✅ Working | Live with internet: UEFI PCIe0 bring-up + `qcwlan8280.sys` + the S23 board data file `bdwlan.elf`. `wifi_research/` holds the bring-up and install docs (UEFI DXE, ACPI SSDT, package builder); `s23pcieprobe` is the diagnostic probe. |
+| **5G modem / PIL / CPU perf** | [`modem_5g_research/`](modem_5g_research/) ([index](modem_5g_research/README.md)), [`drivers/s23pilprobe/`](drivers/s23pilprobe/), [`drivers/s23perf/`](drivers/s23perf/) | 🔬 Research | Autonomous bring-up blueprint, SMEM/IMEM/PIL telemetry, inert subsystem SSDTs, EPSS CPUfreq and TSENS probes. |
+| **Native USB-C** (dual-role, PD 3.0, DP Alt-Mode) | [`usb_research/`](usb_research/) | 🔬 Research | Specification for native USB-C on Windows: MAX77705 OPCODE mailbox, UCM/URS driver split, DWC3/eUSB2/QMP PHY transitions, DP Alt-Mode via WDDM. |
 | **UEFI display fix** | [`display_research/`](display_research/) | ✅ Working | `S23DisplayFixDxe` (DISP_CC gating, DSI0 wake, tear-counter heal) flashed in the UEFI image. |
 
 Driver versions are tracked in each driver's `.inf` (`DriverVer`) and in the commit history (`git log --oneline`).
@@ -48,9 +49,10 @@ Driver versions are tracked in each driver's `.inf` (`DriverVer`) and in the com
 ├── display_research/          UEFI display DXE + display black-screen fix write-up
 ├── gpu_research/              Adreno 740 architecture notes, GPU SSDT, firmware tooling
 ├── bt_research/               QCA6490 UART14 bring-up notes + SSDT
-├── wifi_research/             QCA6490 PCIe Wi-Fi bring-up
+├── wifi_research/             QCA6490 PCIe Wi-Fi 6E bring-up & install (working)
 ├── audio_sensors_research/    audio / haptics / sensors bus map
-├── modem_5g_research/, modem_research/   modem, PIL and subsystem notes
+├── modem_5g_research/         5G modem blueprint, PIL/subsystem notes, SSDTs (index: README.md)
+├── usb_research/              native USB-C spec + MAX77705 OPCODE mailbox reference (host-tested)
 ├── docs/archive/              historical bring-up reports & handoff notes
 └── scripts/legacy/            one-off bring-up scripts kept for reference
 ```

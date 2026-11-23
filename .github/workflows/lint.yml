@@ -35,6 +35,17 @@ jobs:
       - name: Unit tests (no hardware)
         run: python -m unittest discover -s tests -v
 
+  c-host-tests:
+    name: Host C tests for s23gpu pure logic (ASan + UBSan)
+    runs-on: ubuntu-24.04
+    strategy:
+      matrix:
+        cc: [gcc, clang]
+    steps:
+      - uses: actions/checkout@v4
+      - name: VA allocator, msm_validate.h, CreateAllocation range check
+        run: python3 tests/c/run_c_tests.py --sanitize --cc ${{ matrix.cc }}
+
   shellcheck:
     name: Shell scripts
     runs-on: ubuntu-latest
@@ -44,6 +55,28 @@ jobs:
         run: |
           mapfile -d '' files < <(git ls-files -z '*.sh')
           if [ "${#files[@]}" -gt 0 ]; then shellcheck --severity=error "${files[@]}"; fi
+
+  acpi:
+    name: ACPI SSDT syntax (iasl)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install acpica-tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends acpica-tools
+      # audio_sensors_research/ is deliberately excluded (live work in progress on the device)
+      - name: Compile every tracked .asl (errors fail the job, output goes to a temp dir)
+        run: |
+          out="$(mktemp -d)"
+          mapfile -d '' files < <(git ls-files -z '*.asl' ':(exclude)audio_sensors_research/**')
+          rc=0
+          for f in "${files[@]}"; do
+            echo "::group::$f"
+            iasl -p "$out/$(basename "$f" .asl)" "$f" || { echo "::error file=$f::iasl failed"; rc=1; }
+            echo "::endgroup::"
+          done
+          exit $rc
 
   drivers:
     name: ARM64 drivers build + stack check (clang, no hardware)
@@ -67,3 +100,29 @@ jobs:
           python3 scripts/ci/check_driver_stack.py \
             drivers/s23batt/out/s23batt.sys drivers/s23bthx/out/s23bthx.sys \
             drivers/s23keys/out/s23keys.sys drivers/s23touch/out/s23touch.sys
+
+  aux-drivers:
+    name: ARM64 helper/probe drivers build + stack check (clang, no hardware)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install LLVM 18 and aarch64 binutils
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends clang-18 lld-18 llvm-18 binutils-aarch64-linux-gnu
+          echo /usr/lib/llvm-18/bin >> "$GITHUB_PATH"
+      # drivers/s23audprobe and drivers/s23audio are deliberately not built here (live work in progress).
+      - name: Build helper and probe drivers (same flags as local WSL builds)
+        run: |
+          for d in s23perf s23disp_diag s23aclfix s23aclsvc s23pilprobe s23pcieprobe s23sensprobe s23btprobe s23gpuprobe; do
+            echo "::group::$d"
+            python3 "drivers/$d/build_wsl.py"
+            echo "::endgroup::"
+          done
+      - name: __chkstk / stack frame check (kernel drivers only; s23aclsvc.exe is a user-mode service)
+        run: |
+          python3 scripts/ci/check_driver_stack.py \
+            drivers/s23perf/out/s23perf.sys drivers/s23disp_diag/out/s23disp_diag.sys \
+            drivers/s23aclfix/out/s23aclfix.sys drivers/s23pilprobe/out/s23pilprobe.sys \
+            drivers/s23pcieprobe/out/s23pcieprobe.sys drivers/s23sensprobe/out/s23sensprobe.sys \
+            drivers/s23btprobe/out/s23btprobe.sys drivers/s23gpuprobe/out/s23gpuprobe.sys
