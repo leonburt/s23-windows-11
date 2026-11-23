@@ -737,7 +737,10 @@ static NTSTATUS APIENTRY TgCreateAllocation(const HANDLE hAdapter, DXGKARG_CREAT
             }
         } else if (al->Desc.bo != 0) {
             al->Bo = MsmBoAcquire(al->Desc.bo);
-            if (al->Bo == NULL || al->Bo->Size < al->Desc.bo_offset + al->Desc.size) {
+            /* 64-bit sum: bo_offset and size are 32-bit values from the (user-mode) allocation private
+             * data; a 32-bit sum can wrap and let AllocPixels() point far outside the BO. */
+            if (al->Bo == NULL ||
+                (ULONGLONG)al->Bo->Size < (ULONGLONG)al->Desc.bo_offset + (ULONGLONG)al->Desc.size) {
                 if (al->Bo != NULL) {
                     MsmBoRelease(al->Bo);
                 }
